@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Network Forensics Analyzer</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{--bg:#0a0e1a;--bg2:#111827;--bg3:#1a2235;--border:#1e2d45;--accent:#00d4ff;
+        --red:#ff4757;--orange:#ffa502;--yellow:#ffdd59;--green:#2ed573;
+        --text:#e2e8f0;--muted:#64748b;--mono:'SF Mono','Fira Code',monospace}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+  header{border-bottom:1px solid var(--border);padding:1rem 2rem;display:flex;align-items:center;justify-content:space-between}
+  .logo{display:flex;align-items:center;gap:10px}
+  .logo-icon{width:32px;height:32px;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px}
+  .logo-text{font-size:16px;font-weight:600}
+  .logo-sub{font-size:11px;color:var(--muted);font-family:var(--mono)}
+  .status-dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+  #upload-screen{max-width:680px;margin:60px auto;padding:0 1.5rem;text-align:center}
+  .eyebrow{font-family:var(--mono);font-size:11px;color:var(--accent);letter-spacing:3px;text-transform:uppercase;margin-bottom:1rem}
+  h1{font-size:36px;font-weight:700;line-height:1.15;margin-bottom:.75rem}
+  h1 span{color:var(--accent)}
+  .sub{font-size:15px;color:var(--muted);margin-bottom:2.5rem;line-height:1.6}
+  .drop-zone{border:1.5px dashed var(--border);border-radius:16px;padding:3rem 2rem;cursor:pointer;transition:all .2s;background:var(--bg2);position:relative}
+  .drop-zone:hover,.drop-zone.over{border-color:var(--accent);background:rgba(0,212,255,.04)}
+  .drop-icon{font-size:48px;margin-bottom:1rem}
+  .drop-text{font-size:15px;color:var(--muted);margin-bottom:.5rem}
+  .drop-hint{font-size:12px;color:var(--border);font-family:var(--mono)}
+  #file-input{position:absolute;inset:0;opacity:0;cursor:pointer}
+  .divider{display:flex;align-items:center;gap:1rem;color:var(--muted);font-size:13px;margin:1.5rem 0}
+  .divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border)}
+  .samples{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .s-btn{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;cursor:pointer;text-align:left;transition:all .15s;color:var(--text)}
+  .s-btn:hover{border-color:var(--accent);background:rgba(0,212,255,.04)}
+  .s-title{font-size:13px;font-weight:500;margin-bottom:2px}
+  .s-desc{font-size:11px;color:var(--muted);font-family:var(--mono)}
+  #loading-screen{display:none;max-width:380px;margin:120px auto;text-align:center;padding:0 1.5rem}
+  .spinner{width:48px;height:48px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 1.5rem}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .l-text{font-size:15px;color:var(--muted)}
+  .l-file{font-size:13px;font-family:var(--mono);color:var(--accent);margin-top:6px}
+  #dashboard{display:none;padding:1.5rem 2rem;max-width:1400px;margin:0 auto}
+  .dash-hdr{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1.5rem;gap:1rem;flex-wrap:wrap}
+  .d-fname{font-family:var(--mono);font-size:13px;color:var(--accent);margin-bottom:4px}
+  .d-title{font-size:22px;font-weight:600}
+  .back-btn{background:var(--bg2);border:1px solid var(--border);color:var(--text);padding:8px 16px;border-radius:8px;cursor:pointer;font-size:13px;white-space:nowrap;transition:border-color .15s}
+  .back-btn:hover{border-color:var(--accent)}
+  .metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:1.25rem}
+  .metric{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px 16px}
+  .metric.danger{border-color:rgba(255,71,87,.35);background:rgba(255,71,87,.06)}
+  .metric.warn{border-color:rgba(255,165,2,.35);background:rgba(255,165,2,.06)}
+  .metric.ok{border-color:rgba(46,213,115,.35);background:rgba(46,213,115,.06)}
+  .m-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;font-family:var(--mono)}
+  .m-val{font-size:28px;font-weight:700;line-height:1}
+  .metric.danger .m-val{color:var(--red)}
+  .metric.warn .m-val{color:var(--orange)}
+  .metric.ok .m-val{color:var(--green)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px}
+  .card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:1rem 1.25rem}
+  .card-title{font-size:13px;font-weight:500;margin-bottom:1rem;display:flex;align-items:center;gap:6px}
+  .c-dot{width:6px;height:6px;border-radius:50%;background:var(--accent);flex-shrink:0}
+  .alert-list{display:flex;flex-direction:column;gap:8px;max-height:520px;overflow-y:auto}
+  .a-item{background:var(--bg3);border-radius:8px;padding:10px 12px;border-left:3px solid var(--border)}
+  .a-item.CRITICAL{border-left-color:var(--red)}
+  .a-item.HIGH{border-left-color:var(--orange)}
+  .a-item.MEDIUM{border-left-color:var(--yellow)}
+  .a-row{display:flex;align-items:center;gap:8px;margin-bottom:3px}
+  .badge{font-size:10px;font-weight:600;padding:2px 6px;border-radius:4px;font-family:var(--mono)}
+  .badge.CRITICAL{background:rgba(255,71,87,.2);color:var(--red)}
+  .badge.HIGH{background:rgba(255,165,2,.2);color:var(--orange)}
+  .badge.MEDIUM{background:rgba(255,221,89,.15);color:var(--yellow)}
+  .a-type{font-size:13px;font-weight:500;flex:1}
+  .a-mitre{font-size:10px;color:var(--accent);font-family:var(--mono)}
+  .a-detail{font-size:11px;color:var(--muted)}
+  .a-ips{font-size:11px;color:var(--muted);font-family:var(--mono);margin-top:2px}
+  .a-ev{font-size:11px;color:#475569;margin-top:2px}
+  canvas{max-height:200px}
+  .mt-table{width:100%;border-collapse:collapse;font-size:12px}
+  .mt-table th{text-align:left;color:var(--muted);font-weight:400;padding:4px 8px;border-bottom:1px solid var(--border);font-family:var(--mono);font-size:11px;text-transform:uppercase}
+  .mt-table td{padding:6px 8px;border-bottom:1px solid rgba(30,45,69,.5)}
+  .mt-id{color:var(--accent);font-family:var(--mono)}
+  .empty{text-align:center;padding:2rem;color:var(--muted)}
+  .empty-icon{font-size:32px;margin-bottom:.5rem}
+  @media (max-width:700px){.grid2,.grid3{grid-template-columns:1fr}.samples{grid-template-columns:1fr}header{padding:1rem}#dashboard{padding:1rem}h1{font-size:26px}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">🕵️</div>
+    <div>
+      <div class="logo-text">Network Forensics Analyzer</div>
+      <div class="logo-sub">packet-level · DFIR · protocol analysis</div>
+    </div>
+  </div>
+  <div class="status-dot" title="Ready"></div>
+</header>
+
+<div id="upload-screen">
+  <div class="eyebrow">DFIR · Network Forensics</div>
+  <h1>Drop a PCAP.<br><span>See what the wire saw.</span></h1>
+  <p class="sub">Upload a packet capture for protocol-level threat hunting — reconnaissance sweeps, C2 beacon timing, DNS tunneling, ARP spoofing, cleartext credentials, and weak TLS. Detections only visible at the packet layer.</p>
+
+  <div class="drop-zone" id="drop-zone">
+    <input type="file" id="file-input" accept=".pcap,.pcapng,.cap">
+    <div class="drop-icon">📦</div>
+    <div class="drop-text">Drop your .pcap file here or click to browse</div>
+    <div class="drop-hint">.pcap · .pcapng · .cap · up to 100 MB</div>
+  </div>
+
+  <div class="divider">or try a sample</div>
+
+  <div class="samples">
+    <button class="s-btn" onclick="loadSample('recon')">
+      <div class="s-title">🔎 Recon Sweep</div>
+      <div class="s-desc">SYN probe · 21 ports · T1046</div>
+    </button>
+    <button class="s-btn" onclick="loadSample('c2')">
+      <div class="s-title">📡 C2 Beaconing</div>
+      <div class="s-desc">30s interval · port 4444 · T1071</div>
+    </button>
+    <button class="s-btn" onclick="loadSample('dns')">
+      <div class="s-title">🌐 DNS Tunneling</div>
+      <div class="s-desc">Base64 subdomains · T1071.004</div>
+    </button>
+    <button class="s-btn" onclick="loadSample('creds')">
+      <div class="s-title">🔓 Cleartext Credentials</div>
+      <div class="s-desc">HTTP form + FTP · T1040</div>
+    </button>
+  </div>
+  <div style="margin-top:10px;">
+    <button class="s-btn" style="width:100%" onclick="loadSample('mixed')">
+      <div class="s-title">💀 Mixed Attacks — All Techniques</div>
+      <div class="s-desc">Recon · C2 · exfil · ARP spoof · ICMP tunnel · weak TLS</div>
+    </button>
+  </div>
+</div>
+
+<div id="loading-screen">
+  <div class="spinner"></div>
+  <div class="l-text">Analyzing packets…</div>
+  <div class="l-file" id="l-fname"></div>
+</div>
+
+<div id="dashboard">
+  <div class="dash-hdr">
+    <div>
+      <div class="d-fname" id="d-fname"></div>
+      <div class="d-title">Network Forensics Report</div>
+    </div>
+    <button class="back-btn" onclick="reset()">← New scan</button>
+  </div>
+
+  <div class="metrics">
+    <div class="metric danger"><div class="m-label">Critical</div><div class="m-val" id="m-crit">0</div></div>
+    <div class="metric warn"><div class="m-label">High</div><div class="m-val" id="m-high">0</div></div>
+    <div class="metric"><div class="m-label">Alerts</div><div class="m-val" id="m-tot">0</div></div>
+    <div class="metric"><div class="m-label">Packets</div><div class="m-val" id="m-pkt">0</div></div>
+    <div class="metric"><div class="m-label">Unique IPs</div><div class="m-val" id="m-ips">0</div></div>
+    <div class="metric ok"><div class="m-label">Size</div><div class="m-val" id="m-sz">0</div></div>
+  </div>
+
+  <div class="grid3">
+    <div class="card"><div class="card-title"><span class="c-dot"></span>Severity</div><canvas id="ch-sev"></canvas></div>
+    <div class="card"><div class="card-title"><span class="c-dot"></span>Protocols</div><canvas id="ch-proto"></canvas></div>
+    <div class="card"><div class="card-title"><span class="c-dot"></span>Top talkers</div><canvas id="ch-talk"></canvas></div>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <div class="card-title"><span class="c-dot"></span>Alerts</div>
+      <div class="alert-list" id="alert-list"></div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="c-dot"></span>MITRE ATT&CK coverage</div>
+      <table class="mt-table">
+        <thead><tr><th>Technique</th><th>Tactic</th><th>Hits</th></tr></thead>
+        <tbody id="mt-body"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+let cSev=null,cProto=null,cTalk=null;
+const dz=document.getElementById('drop-zone'), fi=document.getElementById('file-input');
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('over')});
+dz.addEventListener('dragleave',()=>dz.classList.remove('over'));
+dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('over');if(e.dataTransfer.files[0])upload(e.dataTransfer.files[0])});
+fi.addEventListener('change',()=>{if(fi.files[0])upload(fi.files[0])});
+
+function upload(file){
+  loading(file.name);
+  const fd=new FormData(); fd.append('pcap',file);
+  fetch('/analyze',{method:'POST',body:fd}).then(r=>r.json())
+    .then(d=>{if(d.error){alert('Error: '+d.error);showUpload()}else render(d)})
+    .catch(()=>{alert('Upload failed');showUpload()});
+}
+function loadSample(name){
+  loading(name+'.pcap');
+  fetch('/sample/'+name).then(r=>r.json())
+    .then(d=>{if(d.error){alert('Error: '+d.error);showUpload()}else render(d)})
+    .catch(()=>{alert('Failed');showUpload()});
+}
+function loading(fname){
+  document.getElementById('upload-screen').style.display='none';
+  document.getElementById('dashboard').style.display='none';
+  document.getElementById('loading-screen').style.display='block';
+  document.getElementById('l-fname').textContent=fname;
+}
+function showUpload(){
+  document.getElementById('loading-screen').style.display='none';
+  document.getElementById('dashboard').style.display='none';
+  document.getElementById('upload-screen').style.display='block';
+}
+function reset(){[cSev,cProto,cTalk].forEach(c=>{if(c)c.destroy()});cSev=cProto=cTalk=null;fi.value='';showUpload()}
+
+function render(d){
+  document.getElementById('loading-screen').style.display='none';
+  document.getElementById('dashboard').style.display='block';
+  document.getElementById('d-fname').textContent=d.filename;
+  document.getElementById('m-crit').textContent=d.severity_counts.CRITICAL||0;
+  document.getElementById('m-high').textContent=d.severity_counts.HIGH||0;
+  document.getElementById('m-tot').textContent=d.total_alerts;
+  document.getElementById('m-pkt').textContent=d.total_packets.toLocaleString();
+  document.getElementById('m-ips').textContent=d.unique_src_ips;
+  document.getElementById('m-sz').textContent=d.file_size_mb+' MB';
+
+  if(cSev)cSev.destroy(); if(cProto)cProto.destroy(); if(cTalk)cTalk.destroy();
+
+  cSev=new Chart(document.getElementById('ch-sev'),{type:'doughnut',
+    data:{labels:['Critical','High','Medium'],datasets:[{data:[d.severity_counts.CRITICAL||0,d.severity_counts.HIGH||0,d.severity_counts.MEDIUM||0],backgroundColor:['#ff4757','#ffa502','#ffdd59'],borderWidth:0}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'65%',plugins:{legend:{display:true,position:'bottom',labels:{color:'#64748b',font:{size:11},boxWidth:12}}}}});
+
+  const protos=Object.keys(d.protocol_dist).slice(0,7);
+  cProto=new Chart(document.getElementById('ch-proto'),{type:'bar',
+    data:{labels:protos,datasets:[{data:protos.map(p=>d.protocol_dist[p]),backgroundColor:'#00d4ff33',borderColor:'#00d4ff',borderWidth:1,borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false}},
+      scales:{x:{grid:{color:'#1e2d45'},ticks:{color:'#64748b',font:{size:10}}},y:{grid:{display:false},ticks:{color:'#e2e8f0',font:{size:11}}}}}});
+
+  const tks=(d.top_talkers||[]).slice(0,6);
+  cTalk=new Chart(document.getElementById('ch-talk'),{type:'bar',
+    data:{labels:tks.map(t=>t[0]),datasets:[{data:tks.map(t=>t[1]),backgroundColor:'#ff475733',borderColor:'#ff4757',borderWidth:1,borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false}},
+      scales:{x:{grid:{color:'#1e2d45'},ticks:{color:'#64748b',font:{size:10}}},y:{grid:{display:false},ticks:{color:'#e2e8f0',font:{size:10}}}}}});
+
+  const al=document.getElementById('alert-list'); al.innerHTML='';
+  if(!d.alerts.length){al.innerHTML='<div class="empty"><div class="empty-icon">✅</div>No threats detected</div>'}
+  else{
+    d.alerts.forEach(a=>{
+      const el=document.createElement('div'); el.className='a-item '+a.severity;
+      el.innerHTML=`<div class="a-row"><span class="badge ${a.severity}">${a.severity}</span><span class="a-type">${a.type}</span><span class="a-mitre">${a.mitre_id}</span></div>
+        <div class="a-detail">${a.detail}</div><div class="a-ips">${a.src} → ${a.dst}</div>
+        ${a.evidence?`<div class="a-ev">${a.evidence}</div>`:''}`;
+      al.appendChild(el);
+    });
+  }
+
+  const tb=document.getElementById('mt-body'); tb.innerHTML='';
+  const mr={};
+  d.alerts.forEach(a=>{if(!mr[a.mitre_id])mr[a.mitre_id]={tactic:a.mitre_tactic,count:0};mr[a.mitre_id].count++});
+  Object.entries(mr).sort((a,b)=>b[1].count-a[1].count).forEach(([id,info])=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td><span class="mt-id">${id}</span></td><td style="color:#64748b">${info.tactic}</td><td style="font-weight:500">${info.count}</td>`;
+    tb.appendChild(tr);
+  });
+  if(!Object.keys(mr).length) tb.innerHTML='<tr><td colspan="3" style="color:#64748b;text-align:center;padding:1rem">No techniques mapped</td></tr>';
+}
+</script>
+</body>
+</html>
