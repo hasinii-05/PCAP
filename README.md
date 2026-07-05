@@ -58,7 +58,7 @@ open http://localhost:8080
 [*] Running network forensics detection rules...
     ✓ 3 alerts generated
 
-  🔴 [CRITICAL] Cleartext Credentials (HTTP Form)
+  > [CRITICAL] Cleartext Credentials (HTTP Form)
      MITRE  : T1040 — Credential Access
      Src    : 192.168.1.100
      Dst    : 192.168.1.50:80
@@ -67,12 +67,12 @@ open http://localhost:8080
               network observer
      Evidence: Captured fragment: SuperSecret123
 
-  🔴 [CRITICAL] Cleartext Credentials (FTP)
+  > [CRITICAL] Cleartext Credentials (FTP)
      MITRE  : T1040 — Credential Access
      Detail : Unencrypted credential material observed in FTP traffic
      Evidence: Captured fragment: ftpadmin
 
-  🟠 [HIGH] C2 Beacon (Timing Analysis)
+  > [HIGH] C2 Beacon (Timing Analysis)
      MITRE  : T1071 — Command and Control
      Detail : 10 connections every 5.0s ± 0.00s — statistically
               regular interval indicates automated beaconing
