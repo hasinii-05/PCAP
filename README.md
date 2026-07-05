@@ -2,9 +2,7 @@
 
 A packet-level threat hunting tool that reconstructs network traffic from `.pcap` captures and detects attacks only visible at the wire — reconnaissance sweeps, C2 beacon timing, DNS tunneling, ARP spoofing, cleartext credential exposure, and weak TLS negotiation.
 
-> This is a **network forensics / DFIR** tool, distinct from the companion [Security Log Analysis & Threat Detection Platform](#), which operates on application and system logs. Where that platform sees *what a server logged*, this tool sees *what actually crossed the wire* — including the raw bytes a log file would never capture.
 
----
 
 ## What Makes This Packet-Level, Not Log-Level
 
@@ -141,6 +139,3 @@ pcap-analyzer/
 
 ---
 
-## Author
-
-Portfolio project demonstrating network forensics and DFIR skills — companion to the Security Log Analysis & Threat Detection Platform (application/host layer) and Cloud Threat Detection (cloud layer) projects.
